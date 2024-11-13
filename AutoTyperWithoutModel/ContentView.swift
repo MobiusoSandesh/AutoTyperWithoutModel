@@ -8,50 +8,142 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var text: String = ""
-    @State private var transformedText: String = ""
+    @State private var inputText: String = ""
+    @State private var generatedText: String = ""
+    @State private var isGenerating: Bool = false
+    @State private var showCopiedAlert: Bool = false
+    @Environment(\.colorScheme) var colorScheme
+    
     private let gpt2 = GPT2(strategy: .greedy)
     
     var body: some View {
-        VStack {
-            // TextField for user input
-            TextField("Enter Text Here", text: $text)
-                .font(.system(size: 20))
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .foregroundColor(.black)
-                .shadow(radius: 10, x: 0, y: 0)
-                .padding()
+        ZStack {
+           
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    colorScheme == .dark ? .black : .gray.opacity(0.1),
+                    colorScheme == .dark ? .gray.opacity(0.3) : .white
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             
-            Button(action: {
-                generateText()
-            }) {
-                Text("Generate Text")
-                    .font(.system(size: 18))
-                    .foregroundColor(.white)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(8)
+            ScrollView {
+                VStack(spacing: 24) {
+    
+                    Text("AI Text Generator")
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .padding(.top, 20)
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Your Input")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        
+                        TextEditor(text: $inputText)
+                            .frame(height: 100)
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(colorScheme == .dark ? Color(.systemGray6) : .white)
+                                    .shadow(color: .gray.opacity(0.2), radius: 5, x: 0, y: 2)
+                            )
+                    }
+                    .padding(.horizontal)
+                    
+                    Button(action: {
+                        withAnimation {
+                            generateText()
+                        }
+                    }) {
+                        HStack {
+                            Text(isGenerating ? "Generating..." : "Generate Text")
+                            if isGenerating {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [.blue, .blue.opacity(0.8)]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 2)
+                    }
+                    .disabled(inputText.isEmpty || isGenerating)
+                    .padding(.horizontal)
+                    
+                    if !generatedText.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Generated Text")
+                                    .font(.headline)
+                                    .foregroundColor(.gray)
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    UIPasteboard.general.string = "\(inputText) \(generatedText)"
+                                    withAnimation {
+                                        showCopiedAlert = true
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                        showCopiedAlert = false
+                                    }
+                                }) {
+                                    Image(systemName: "doc.on.doc")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            
+                            Text("\(inputText) \(generatedText)")
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(colorScheme == .dark ? Color(.systemGray6) : .white)
+                                        .shadow(color: .gray.opacity(0.2), radius: 5, x: 0, y: 2)
+                                )
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+                .padding(.vertical)
             }
-            .padding(.top)
             
-            // TextEditor for generated text, making it copyable
-            TextEditor(text: .constant("Generated Text: \(text) \(transformedText)"))
-                .font(.system(size: 16))
-                .padding(.top)
-                .foregroundColor(.gray)
-                .frame(height: 100)
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.gray, lineWidth: 1)
-                )
+            if showCopiedAlert {
+                VStack {
+                    Spacer()
+                    Text("Copied to clipboard!")
+                        .padding()
+                        .background(Color.black.opacity(0.7))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        .padding(.bottom, 32)
+                }
+            }
         }
-        .padding()
     }
     
-    func generateText() {
-        transformedText = gpt2.generate(text: text, nTokens: 10) { generatedText, timeTaken in
-            print("Generated Text: \(generatedText) in \(timeTaken) seconds")
+    private func generateText() {
+        isGenerating = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = gpt2.generate(text: inputText, nTokens: 10) { generatedText, timeTaken in
+                print("Generated Text: \(generatedText) in \(timeTaken) seconds")
+            }
+            
+            DispatchQueue.main.async {
+                generatedText = result
+                isGenerating = false
+            }
         }
     }
 }
