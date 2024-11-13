@@ -141,6 +141,7 @@ struct ContentView: View {
             }
             
             DispatchQueue.main.async {
+                inputText += " " + generatedText
                 generatedText = result
                 isGenerating = false
             }
