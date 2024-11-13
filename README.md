@@ -17,7 +17,6 @@ https://drive.google.com/file/d/1SuLlhHQeHz-LGujMVR6it3dWgxbaDA5A/view?usp=shari
 ## Features
 
 - 🎯 Real-time text generation using GPT-2
-- 🌓 Dark/Light mode support
 - 📱 Clean and modern SwiftUI interface
 - 📋 Copy to clipboard functionality
 - 🔄 Loading state indicators
